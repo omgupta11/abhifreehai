@@ -35,6 +35,8 @@ const BrandLogo = () => (
   />
 )
 
+
+
 const getCurrentLocation = (): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -1508,7 +1510,6 @@ return (data ?? []).map(
    * AUTHENTICATED CUSTOMER DASHBOARD
    * ---------------------------------------------------------
    */
-
   if (user && role === 'customer') {
     return (
       <main className="min-h-screen bg-white text-gray-900">
@@ -1589,7 +1590,8 @@ return (data ?? []).map(
                 {searchError}
               </div>
             )}
-{/* Search results */}
+
+            {/* Search results */}
             {searchPerformed && !searchLoading && (
               <div className="mx-auto mt-10 max-w-2xl text-left">
 
@@ -1619,17 +1621,20 @@ return (data ?? []).map(
                         <div className="flex items-start justify-between gap-4">
 
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
 
-                              <span className="text-xs font-semibold text-green-600">
-                                AVAILABLE NOW
-                              </span>
-                            </div>
+                            {professional.is_available && (
+                              <div className="flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+
+                                <span className="text-xs font-semibold text-green-600">
+                                  AVAILABLE NOW
+                                </span>
+                              </div>
+                            )}
 
                             <h3 className="mt-2 text-lg font-semibold text-gray-950">
                               {professional.business_name ||
-                                'Local professional'}
+                                'Local business'}
                             </h3>
 
                             {professional.services.length > 0 && (
@@ -1644,12 +1649,19 @@ return (data ?? []).map(
                               </p>
                             )}
 
-                            {professional.service_area_km != null && (
-                              <p className="mt-1 text-xs text-gray-400">
-                                Service area: up to{' '}
-                                {professional.service_area_km} km
-                              </p>
-                            )}
+                            {professional.distance_km != null &&
+                              Number.isFinite(professional.distance_km) && (
+                                <p className="mt-2 text-sm font-medium text-gray-500">
+                                  {professional.distance_km < 1
+                                    ? `${Math.round(
+                                        professional.distance_km * 1000,
+                                      )} m away`
+                                    : `${professional.distance_km.toFixed(
+                                        1,
+                                      )} km away`}
+                                </p>
+                              )}
+
                           </div>
 
                           {professional.phone ? (
@@ -1834,17 +1846,20 @@ return (data ?? []).map(
                       <div className="flex items-start justify-between gap-4">
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
 
-                            <span className="text-xs font-semibold text-green-600">
-                              AVAILABLE NOW
-                            </span>
-                          </div>
+                          {professional.is_available && (
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+
+                              <span className="text-xs font-semibold text-green-600">
+                                AVAILABLE NOW
+                              </span>
+                            </div>
+                          )}
 
                           <h3 className="mt-2 text-lg font-semibold text-gray-950">
                             {professional.business_name ||
-                              'Local professional'}
+                              'Local business'}
                           </h3>
 
                           {professional.services.length > 0 && (
@@ -1859,12 +1874,19 @@ return (data ?? []).map(
                             </p>
                           )}
 
-                          {professional.service_area_km != null && (
-                            <p className="mt-1 text-xs text-gray-400">
-                              Service area: up to{' '}
-                              {professional.service_area_km} km
-                            </p>
-                          )}
+                          {professional.distance_km != null &&
+                            Number.isFinite(professional.distance_km) && (
+                              <p className="mt-2 text-sm font-medium text-gray-500">
+                                {professional.distance_km < 1
+                                  ? `${Math.round(
+                                      professional.distance_km * 1000,
+                                    )} m away`
+                                  : `${professional.distance_km.toFixed(
+                                      1,
+                                    )} km away`}
+                              </p>
+                            )}
+
                         </div>
 
                         {professional.phone ? (
