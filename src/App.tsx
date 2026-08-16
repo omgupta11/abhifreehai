@@ -2352,4 +2352,228 @@ return (data ?? []).map(
 }
 
 export default App
+
+/*
+ * ---------------------------------------------------------
+ * SIMPLE ANALYTICS TRACKING
+ * ---------------------------------------------------------
+ * Tracks:
+ * - page_view
+ * - search
+ * - call_click
+ * - signup
+ *
+ * Uses Supabase RPC:
+ * public.log_analytics_event(...)
+ */
+
+if (typeof window !== 'undefined') {
+  const ANALYTICS_SESSION_KEY = 'abhi_free_hai_analytics_session'
+
+  const getAnalyticsSessionId = () => {
+    let sessionId = localStorage.getItem(ANALYTICS_SESSION_KEY)
+
+    if (!sessionId) {
+      sessionId =
+        `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+
+      localStorage.setItem(
+        ANALYTICS_SESSION_KEY,
+        sessionId,
+      )
+    }
+
+    return sessionId
+  }
+
+  const getTrafficSource = () => {
+    const params = new URLSearchParams(
+      window.location.search,
+    )
+
+    const utmSource = params.get('utm_source')
+
+    if (utmSource) {
+      return utmSource.toLowerCase()
+    }
+
+    const referrer = document.referrer.toLowerCase()
+
+    if (referrer.includes('instagram.com')) {
+      return 'instagram'
+    }
+
+    if (referrer.includes('facebook.com')) {
+      return 'facebook'
+    }
+
+    if (referrer.includes('whatsapp.com')) {
+      return 'whatsapp'
+    }
+
+    if (referrer.includes('google.')) {
+      return 'google'
+    }
+
+    if (referrer.includes('youtube.com')) {
+      return 'youtube'
+    }
+
+    if (referrer.includes('twitter.com') || referrer.includes('x.com')) {
+      return 'x'
+    }
+
+    return referrer ? 'referral' : 'direct'
+  }
+
+  const logAnalyticsEvent = async (
+    eventName: string,
+    metadata: Record<string, unknown> = {},
+  ) => {
+    try {
+      const { error } = await supabase.rpc(
+        'log_analytics_event',
+        {
+          p_event_name: eventName,
+          p_session_id: getAnalyticsSessionId(),
+          p_source: getTrafficSource(),
+          p_role: null,
+          p_metadata: metadata,
+        },
+      )
+
+      if (error) {
+        console.error(
+          'Analytics event failed:',
+          error,
+        )
+      }
+    } catch (analyticsError) {
+      console.error(
+        'Analytics error:',
+        analyticsError,
+      )
+    }
+  }
+
+  /*
+   * PAGE VIEW
+   */
+  const pageViewKey = 'abhi_free_hai_page_view_logged'
+
+  if (!sessionStorage.getItem(pageViewKey)) {
+    sessionStorage.setItem(pageViewKey, '1')
+
+    void logAnalyticsEvent(
+      'page_view',
+      {
+        path: window.location.pathname,
+        page: document.title,
+      },
+    )
+  }
+
+  /*
+   * CLICK + FORM TRACKING
+   *
+   * Uses event delegation so we don't have to edit
+   * the existing 2,300+ line React component.
+   */
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target
+
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      /*
+       * CALL BUTTON
+       */
+      const callLink =
+        target.closest<HTMLAnchorElement>(
+          'a[href^="tel:"]',
+        )
+
+      if (callLink) {
+        void logAnalyticsEvent(
+          'call_click',
+          {
+            phone_present: true,
+          },
+        )
+        return
+      }
+
+      /*
+       * SIGNUP BUTTON
+       */
+      const button =
+        target.closest<HTMLButtonElement>('button')
+
+      if (!button) {
+        return
+      }
+
+      const buttonText =
+        button.textContent
+          ?.trim()
+          .toLowerCase() || ''
+
+      if (
+        buttonText.includes(
+          'create professional account',
+        ) ||
+        buttonText === 'create account'
+      ) {
+        void logAnalyticsEvent(
+          'signup',
+          {
+            button_text: button.textContent?.trim() || null,
+          },
+        )
+      }
+    },
+    true,
+  )
+
+  /*
+   * SEARCH TRACKING
+   */
+  document.addEventListener(
+    'submit',
+    (event) => {
+      const form = event.target
+
+      if (!(form instanceof HTMLFormElement)) {
+        return
+      }
+
+      const searchInput =
+        form.querySelector<HTMLInputElement>(
+          'input[type="search"]',
+        )
+
+      if (!searchInput) {
+        return
+      }
+
+      const searchTerm =
+        searchInput.value.trim()
+
+      if (!searchTerm) {
+        return
+      }
+
+      void logAnalyticsEvent(
+        'search',
+        {
+          query: searchTerm,
+        },
+      )
+    },
+    true,
+  )
+}
             
