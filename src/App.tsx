@@ -34,9 +34,6 @@ const BrandLogo = () => (
     className="h-10 w-auto object-contain"
   />
 )
-
-
-
 const getCurrentLocation = (): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -47,7 +44,6 @@ const getCurrentLocation = (): Promise<Coordinates> =>
       )
       return
     }
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
         resolve({
@@ -602,7 +598,7 @@ function App() {
    * Flow:
    * services -> professional_services -> professional_profiles
    */
-  const searchProfessionals = async (
+    const searchProfessionals = async (
     query: string,
   ): Promise<SearchResult[]> => {
     const cleanQuery = query.trim()
@@ -619,14 +615,57 @@ function App() {
     const customerLocation = await getCurrentLocation()
 
     /*
-     * The actual distance/radius filtering happens inside the
-     * Postgres RPC. We do NOT fetch professional coordinates into
-     * the browser.
+     * First resolve the user's natural-language search to the
+     * closest canonical service using semantic search.
+     *
+     * Example:
+     * "my tap is leaking"
+     *        ↓
+     * "Plumbing"
+     */
+    const {
+      data: semanticData,
+      error: semanticError,
+    } = await supabase.functions.invoke(
+      'semantic-service-search',
+      {
+        body: {
+          query: cleanQuery,
+        },
+      },
+    )
+
+    if (semanticError) {
+      throw semanticError
+    }
+
+    const matches = Array.isArray(
+      semanticData?.matches,
+    )
+      ? semanticData.matches
+      : []
+
+    /*
+     * Use the best semantic match when available.
+     * If semantic search returns nothing, fall back to
+     * the original user query so the existing search still works.
+     */
+    const resolvedService =
+      matches.length > 0 &&
+      typeof matches[0]?.service_name === 'string'
+        ? matches[0].service_name
+        : cleanQuery
+
+    /*
+     * The actual distance and service-radius filtering happens
+     * inside the Postgres RPC.
+     *
+     * We do NOT fetch professional coordinates into the browser.
      */
     const { data, error } = await supabase.rpc(
       'search_professionals',
       {
-        p_service: cleanQuery,
+        p_service: resolvedService,
         p_lat: customerLocation.latitude,
         p_lng: customerLocation.longitude,
       },
@@ -636,36 +675,47 @@ function App() {
       throw error
     }
 
-return (data ?? []).map(
-  (professional: {
-    id: string
-    phone: string | null
-    business_name: string | null
-    description: string | null
-    service_area_km: number | null
-    is_available: boolean
-    distance_km: number | null
-    services: string[]
-  }) => ({
-    id: professional.id,
-    phone: professional.phone ?? null,
-    business_name: professional.business_name ?? null,
-    description: professional.description ?? null,
-    service_area_km:
-      professional.service_area_km != null
-        ? Number(professional.service_area_km)
-        : null,
-    is_available: Boolean(professional.is_available),
-    location: null,
-    distance_km:
-      professional.distance_km != null
-        ? Number(professional.distance_km)
-        : null,
-    services: Array.isArray(professional.services)
-      ? professional.services
-      : [],
-  }),
-)}
+    return (data ?? []).map(
+      (professional: {
+        id: string
+        phone: string | null
+        business_name: string | null
+        description: string | null
+        service_area_km: number | null
+        is_available: boolean
+        distance_km: number | null
+        services: string[]
+      }) => ({
+        id: professional.id,
+        phone: professional.phone ?? null,
+        business_name:
+          professional.business_name ?? null,
+        description:
+          professional.description ?? null,
+        service_area_km:
+          professional.service_area_km != null
+            ? Number(
+                professional.service_area_km,
+              )
+            : null,
+        is_available: Boolean(
+          professional.is_available,
+        ),
+        location: null,
+        distance_km:
+          professional.distance_km != null
+            ? Number(
+                professional.distance_km,
+              )
+            : null,
+        services: Array.isArray(
+          professional.services,
+        )
+          ? professional.services
+          : [],
+      }),
+    )
+  }
 
   /*
    * Search from the public landing page.
@@ -675,7 +725,8 @@ return (data ?? []).map(
   ) => {
     event.preventDefault()
 
-    const query = publicSearchService.trim()
+    const query =
+      publicSearchService.trim()
 
     if (!query) {
       setPublicSearchError(
@@ -692,7 +743,9 @@ return (data ?? []).map(
     setPublicSearchResults([])
 
     try {
-      const results = await searchProfessionals(query)
+      const results =
+        await searchProfessionals(query)
+
       setPublicSearchResults(results)
     } catch (searchErr) {
       console.error(
@@ -718,10 +771,13 @@ return (data ?? []).map(
   ) => {
     event.preventDefault()
 
-    const query = searchService.trim()
+    const query =
+      searchService.trim()
 
     if (!query) {
-      setSearchError('Enter a service to search.')
+      setSearchError(
+        'Enter a service to search.',
+      )
       setSearchResults([])
       setSearchPerformed(false)
       return
@@ -733,7 +789,9 @@ return (data ?? []).map(
     setSearchResults([])
 
     try {
-      const results = await searchProfessionals(query)
+      const results =
+        await searchProfessionals(query)
+
       setSearchResults(results)
     } catch (searchErr) {
       console.error(
@@ -750,13 +808,11 @@ return (data ?? []).map(
       setSearchLoading(false)
     }
   }
-
   /*
    * ---------------------------------------------------------
    * LOGOUT
    * ---------------------------------------------------------
    */
-
   const handleLogout = async () => {
     setLoading(true)
 
