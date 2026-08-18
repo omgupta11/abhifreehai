@@ -25,6 +25,8 @@ type SearchResult = ProfessionalProfile & {
   phone: string | null
   services: string[]
   distance_km: number | null
+  average_rating: number | null
+  review_count: number
 }
 
 const BrandLogo = () => (
@@ -663,151 +665,165 @@ function App() {
      * We do NOT fetch professional coordinates into the browser.
      */
     const { data, error } = await supabase.rpc(
-      'search_professionals',
-      {
-        p_service: resolvedService,
-        p_lat: customerLocation.latitude,
-        p_lng: customerLocation.longitude,
-      },
-    )
+  'search_professionals',
+  {
+    p_service: resolvedService,
+    p_lat: customerLocation.latitude,
+    p_lng: customerLocation.longitude,
+  },
+)
 
-    if (error) {
-      throw error
-    }
+if (error) {
+  throw error
+}
 
-    return (data ?? []).map(
-      (professional: {
-        id: string
-        phone: string | null
-        business_name: string | null
-        description: string | null
-        service_area_km: number | null
-        is_available: boolean
-        distance_km: number | null
-        services: string[]
-      }) => ({
-        id: professional.id,
-        phone: professional.phone ?? null,
-        business_name:
-          professional.business_name ?? null,
-        description:
-          professional.description ?? null,
-        service_area_km:
-          professional.service_area_km != null
-            ? Number(
-                professional.service_area_km,
-              )
-            : null,
-        is_available: Boolean(
-          professional.is_available,
-        ),
-        location: null,
-        distance_km:
-          professional.distance_km != null
-            ? Number(
-                professional.distance_km,
-              )
-            : null,
-        services: Array.isArray(
-          professional.services,
-        )
-          ? professional.services
-          : [],
-      }),
+return (data ?? []).map(
+  (professional: {
+    id: string
+    phone: string | null
+    business_name: string | null
+    description: string | null
+    service_area_km: number | null
+    is_available: boolean
+    distance_km: number | null
+    services: string[]
+    average_rating: number | null
+    review_count: number | null
+  }) => ({
+    id: professional.id,
+    phone: professional.phone ?? null,
+    business_name:
+      professional.business_name ?? null,
+    description:
+      professional.description ?? null,
+    service_area_km:
+      professional.service_area_km != null
+        ? Number(
+            professional.service_area_km,
+          )
+        : null,
+    is_available: Boolean(
+      professional.is_available,
+    ),
+    location: null,
+    distance_km:
+      professional.distance_km != null
+        ? Number(
+            professional.distance_km,
+          )
+        : null,
+    services: Array.isArray(
+      professional.services,
     )
+      ? professional.services
+      : [],
+    average_rating:
+      professional.average_rating != null
+        ? Number(
+            professional.average_rating,
+          )
+        : null,
+    review_count:
+      professional.review_count != null
+        ? Number(
+            professional.review_count,
+          )
+        : null,
+  }),
+)
   }
 
-  /*
-   * Search from the public landing page.
-   */
-  const handlePublicSearch = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault()
+/*
+ * Search from the public landing page.
+ */
+const handlePublicSearch = async (
+  event: FormEvent<HTMLFormElement>,
+) => {
+  event.preventDefault()
 
-    const query =
-      publicSearchService.trim()
+  const query =
+    publicSearchService.trim()
 
-    if (!query) {
-      setPublicSearchError(
-        'Enter a service to search.',
-      )
-      setPublicSearchResults([])
-      setPublicSearchPerformed(false)
-      return
-    }
-
-    setPublicSearchLoading(true)
-    setPublicSearchError('')
-    setPublicSearchPerformed(true)
+  if (!query) {
+    setPublicSearchError(
+      'Enter a service to search.',
+    )
     setPublicSearchResults([])
-
-    try {
-      const results =
-        await searchProfessionals(query)
-
-      setPublicSearchResults(results)
-    } catch (searchErr) {
-      console.error(
-        'Public search failed:',
-        searchErr,
-      )
-
-      setPublicSearchError(
-        searchErr instanceof Error
-          ? searchErr.message
-          : 'Could not search right now. Please try again.',
-      )
-    } finally {
-      setPublicSearchLoading(false)
-    }
+    setPublicSearchPerformed(false)
+    return
   }
 
-  /*
-   * Search from the signed-in customer dashboard.
-   */
-  const handleCustomerSearch = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault()
+  setPublicSearchLoading(true)
+  setPublicSearchError('')
+  setPublicSearchPerformed(true)
+  setPublicSearchResults([])
 
-    const query =
-      searchService.trim()
+  try {
+    const results =
+      await searchProfessionals(query)
 
-    if (!query) {
-      setSearchError(
-        'Enter a service to search.',
-      )
-      setSearchResults([])
-      setSearchPerformed(false)
-      return
-    }
+    setPublicSearchResults(results)
+  } catch (searchErr) {
+    console.error(
+      'Public search failed:',
+      searchErr,
+    )
 
-    setSearchLoading(true)
-    setSearchError('')
-    setSearchPerformed(true)
+    setPublicSearchError(
+      searchErr instanceof Error
+        ? searchErr.message
+        : 'Could not search right now. Please try again.',
+    )
+  } finally {
+    setPublicSearchLoading(false)
+  }
+}
+
+/*
+ * Search from the signed-in customer dashboard.
+ */
+const handleCustomerSearch = async (
+  event: FormEvent<HTMLFormElement>,
+) => {
+  event.preventDefault()
+
+  const query =
+    searchService.trim()
+
+  if (!query) {
+    setSearchError(
+      'Enter a service to search.',
+    )
     setSearchResults([])
-
-    try {
-      const results =
-        await searchProfessionals(query)
-
-      setSearchResults(results)
-    } catch (searchErr) {
-      console.error(
-        'Customer search failed:',
-        searchErr,
-      )
-
-      setSearchError(
-        searchErr instanceof Error
-          ? searchErr.message
-          : 'Could not search right now. Please try again.',
-      )
-    } finally {
-      setSearchLoading(false)
-    }
+    setSearchPerformed(false)
+    return
   }
+
+  setSearchLoading(true)
+  setSearchError('')
+  setSearchPerformed(true)
+  setSearchResults([])
+
+  try {
+    const results =
+      await searchProfessionals(query)
+
+    setSearchResults(results)
+  } catch (searchErr) {
+    console.error(
+      'Customer search failed:',
+      searchErr,
+    )
+
+    setSearchError(
+      searchErr instanceof Error
+        ? searchErr.message
+        : 'Could not search right now. Please try again.',
+    )
+  } finally {
+    setSearchLoading(false)
+  }
+}
   /*
    * ---------------------------------------------------------
    * LOGOUT
