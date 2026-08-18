@@ -1709,6 +1709,28 @@ const handleCustomerSearch = async (
                                 'Local business'}
                             </h3>
 
+<div className="mt-2 flex items-center gap-2 text-sm">
+  {professional.average_rating != null &&
+  professional.review_count > 0 ? (
+    <>
+      <span className="font-semibold text-gray-900">
+        ★ {professional.average_rating.toFixed(1)}
+      </span>
+
+      <span className="text-gray-500">
+        {professional.review_count}{' '}
+        {professional.review_count === 1
+          ? 'review'
+          : 'reviews'}
+      </span>
+    </>
+  ) : (
+    <span className="text-gray-400">
+      No ratings yet
+    </span>
+  )}
+</div>
+
                             {professional.services.length > 0 && (
                               <p className="mt-1 text-sm text-gray-500">
                                 {professional.services.join(' · ')}
